@@ -207,16 +207,10 @@ private:
 
         void perform(char *& dest, Time source, UInt64 fractional_second, UInt32 scale, const DateLUTImpl & timezone)
         {
-            if (func_mysql)
-            {
-                size_t shift = ((static_cast<Action<Time>*>(this))->*func_mysql)(dest, source, fractional_second, scale, timezone);
-                dest += shift + extra_shift;
-            }
-            else
-            {
-                size_t shift = func_joda(dest, source, fractional_second, scale, timezone);
-                dest += shift + extra_shift;
-            }
+            size_t shift = func_mysql
+                           ? ((static_cast<Action<Time>*>(this))->*func_mysql)(dest, source, fractional_second, scale, timezone)
+                           : func_joda(dest, source, fractional_second, scale, timezone);
+            dest += shift + extra_shift;
         }
 
     private:
@@ -708,9 +702,14 @@ private:
         }
     };
 
+    [[noreturn]] static void throwPercentIsLastCharacterException()
+    {
+        throw Exception(ErrorCodes::BAD_ARGUMENTS, "'%' must not be the last character in the format string, use '%%' instead");
+    }
+
     static bool containsOnlyFixedWidthMySQLFormatters(std::string_view format)
     {
-        constexpr std::array variable_width_formatter = {'M'};
+        constexpr std::array variable_width_formatter = {'M', 'W'};
 
         for (size_t i = 0; i < format.size(); ++i)
         {
@@ -718,7 +717,7 @@ private:
             {
                 case '%':
                     if (i + 1 >= format.size())
-                        throw Exception(ErrorCodes::BAD_ARGUMENTS, "'%' must not be the last character in the format string, use '%%' instead");
+                        throwPercentIsLastCharacterException();
                     if (std::any_of(variable_width_formatter.begin(), variable_width_formatter.end(), [&](char c){ return c == format[i + 1]; }))
                         return false;
                     i += 1;
@@ -1025,7 +1024,7 @@ public:
 
                 pos = percent_pos + 1;
                 if (pos >= end)
-                    throw Exception(ErrorCodes::BAD_ARGUMENTS, "'%' must not be the last character in the format string, use '%%' instead");
+                    throwPercentIsLastCharacterException();
 
                 switch (*pos)
                 {
@@ -1105,7 +1104,7 @@ public:
                         Action<T> action;
                         action.setMysqlFunc(&Action<T>::mysqlMonthOfYearTextLong);
                         instructions.push_back(action);
-                        out_template += "September"; // longest possible month name
+                        out_template += "September"; /// longest possible month name
                         break;
                     }
 
@@ -1206,7 +1205,7 @@ public:
                         Action<T> action;
                         action.setMysqlFunc(&Action<T>::mysqlDayOfWeekTextLong);
                         instructions.push_back(action);
-                        out_template += "Monday";
+                        out_template += "Wednesday"; /// longest possible weekday name
                         break;
                     }
 
