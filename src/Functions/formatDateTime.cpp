@@ -185,7 +185,7 @@ private:
         /// std::function and std::bind. Unfortunately, std::function causes a performance degradation by 0.45x compared to raw function
         /// pointers. For MySQL format, we generally prefer raw function pointers. Because of the special case that not all formatters are
         /// fixed-width formatters (see mysqlLiteral), we still need to be able to store state. For that reason, we use member function
-        /// pointers instead of static functin pointers.
+        /// pointers instead of static function pointers.
 
         using FuncMysql = size_t (Action<Time>::*)(char *, Time, UInt64, UInt32, const DateLUTImpl &);
         FuncMysql func_mysql = nullptr;
